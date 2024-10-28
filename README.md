@@ -37,7 +37,7 @@ df = read.csv('D:/STATA/XAUUSD_data.csv')
 df = data.frame(time = as.Date(df[,1]), close = df[,5])
 plot(df,type='l')
 ```
-![plo](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot.png)
+![plo](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplt.png)
 
 总体一直处于上升趋势
 
