@@ -122,3 +122,6 @@ plot(train_data$time[-1],r,type = 'l',ylab='return',xlab = '')
 
 ARMA 模型擅长处理均值的时间序列结构，但它假设残差的方差是恒定的（即同方差）。当残差的条件异方差性显著时，说明数据存在波动性聚集（volatility clustering）现象，即较大或较小的波动往往会连续出现。这种情况在金融时间序列（如股票收益率）中较为常见，此时 ARMA 模型难以准确描述数据的波动特征。GARCH 模型（广义条件异方差模型）通过引入条件方差结构来描述波动性聚集现象，可以更好地拟合和预测波动性。因此，当残差存在条件异方差时，引入 GARCH 模型可以更好地建模数据的波动特性。
 
+## 预测结果
+
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot07.png)
