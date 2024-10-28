@@ -44,51 +44,69 @@ plot(df,type='l')
 ## 对收盘价进行差分，得到每日收盘价变化
 
 ```
-r = diff(df$close)
-plot(df$time[-1],r,type = 'l')
+train_index = c(1:1800)
+train_data = df[train_index,]
+test_data = df[-train_index,]
+r = diff(train_data$close)
+plot(train_data$time[-1],r,type = 'l',ylab='return',xlab = '')
 ```
 ![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot01.png)
 
-差分后的数据(波动)趋于平稳了，而且我们观察到团簇大波动率(高波动率发生时，往往后面也是高波动率)， 所以根据初步判断GARCH模型是合适的
+把数据分为训练测试集后，对训练数据差分后的数据(波动)趋于平稳了，而且我们观察到团簇大波动率(高波动率发生时，往往后面也是高波动率)， 所以根据初步判断GARCH模型是合适的
 
-## 用AIC寻找模型最佳参数
+## 用AIC和BIC寻找模型最佳ARMA参数
 
-之所以用AIC,而不是BIC,AIC 更注重模型的拟合效果，惩罚项相对较小，偏向于选择稍复杂的模型。适用于数据量较大或者对模型复杂度要求不严格的情况。
 
 ```
-r_ts = ts(r)
-info_matrix = matrix(0, nrow = 4, ncol = 4)
-for (i in 1:4) {
-  for (j in 1:4) {
-    garch_spec = ugarchspec(variance.model=list(model="sGARCH", garchOrder=c(i,j)), mean.model=list(armaOrder=c(0,0)))
-    garch_fit = ugarchfit(spec = garch_spec,data=r_ts)
-    info_matrix[i,j] = infocriteria(garch_fit)[1]
+ARMA_est = list()
+ic_arma = matrix( nrow = 4 * 4, ncol = 4 )
+colnames(ic_arma) <- c("p", "q", "aic", "bic")
+for (p in 0:3)
+{
+  for (q in 0:3)
+  {
+    i = p * 4 + q + 1
+    ARMA_est[[i]] = Arima(r, order = c(p, 0, q))
+    ic_arma[i,] = c(p, q, ARMA_est[[i]]$aic, ARMA_est[[i]]$bic)
   }
 }
-which.min(info_matrix)
-```
-
-结果指出考虑前3个残差以及3个波动的平方的影响。
-
-## 检查残差
-
-```
-# 最佳模型
-best_model =  garch_spec = ugarchspec(variance.model=list(model="sGARCH", garchOrder=c(3,3)), mean.model=list(armaOrder=c(0,0)))
-best_fit = ugarchfit(spec = best_model,data = r_ts)
-
-# Ljung-Box 检验
-Box.test(residuals_std, lag = 10, type = "Ljung-Box")  # 检验标准化残差
-Box.test(residuals_std^2, lag = 10, type = "Ljung-Box")  # 检验标准化残差的平方
-```
-
-无论是残差还是残差的平方都拒绝了假设：存在自相关性
+ic_aic_arma = ic_arma[order(ic_arma[,3]),][1:10,]
+ic_bic_arma = ic_arma[order(ic_arma[,4]),][1:10,]
+ic_int_arma = intersect(as.data.frame(ic_aic_arma),
+                         as.data.frame(ic_bic_arma))
+adq_set_arma = as.matrix(arrange(as.data.frame(
+  rbind(ic_int_arma[c(1:3, 6),],
+        ic_bic_arma[2,])), p, q))
+adq_idx_arma = match(data.frame(t(adq_set_arma[, 1:2])),
+                      data.frame(t(ic_arma[, 1:2])))
+nmods = min(length(adq_idx_arma), 2)
+for (i in 1:nmods)
+{
+  checkresiduals(ARMA_est[[adq_idx_arma[i]]])
+}
 
 ```
-# t-test残差均值为0
-residuals_std_xts = xts(residuals_std, order.by = df$time[-1])
-residuals_std_xts
-t.test(as.vector(residuals_std_xts), mu = 0)
+
+
+## 检查残差和残差的自相关性ACF
+
+```
+e2_arma = list()
+for (i in 1:nmods)
+{
+  e2_arma[[i]] <- resid(ARMA_est[[adq_idx_arma[i]]]) 
+  title_p_q <- paste("ARMA(",
+                     as.character(adq_set_arma[i, 1]), ", ",
+                     as.character(adq_set_arma[i, 2]), ")",
+                     sep = "")
+  plot(train_data$time[-1], e2_arma[[i]], type = "l",
+       xlab = "", ylab = "squared resid",
+       main = paste("Plot: ", title_p_q))
+  acf(e2_arma[[i]], xlab = "", ylab = "",
+      main = paste("SACF: ", title_p_q))
+}
 ```
 
-无法拒绝假设残差均值为0
+平方残差表现出较强的自相关性，尽管残差本身的自相关性似乎很低。我们将此解读为可能存在条件异方差的证据。
+
+
