@@ -56,57 +56,25 @@ plot(train_data$time[-1],r,type = 'l',ylab='return',xlab = '')
 
 ## 用AIC和BIC寻找模型最佳ARMA参数
 
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot.png)
 
-```
-ARMA_est = list()
-ic_arma = matrix( nrow = 4 * 4, ncol = 4 )
-colnames(ic_arma) <- c("p", "q", "aic", "bic")
-for (p in 0:3)
-{
-  for (q in 0:3)
-  {
-    i = p * 4 + q + 1
-    ARMA_est[[i]] = Arima(r, order = c(p, 0, q))
-    ic_arma[i,] = c(p, q, ARMA_est[[i]]$aic, ARMA_est[[i]]$bic)
-  }
-}
-ic_aic_arma = ic_arma[order(ic_arma[,3]),][1:10,]
-ic_bic_arma = ic_arma[order(ic_arma[,4]),][1:10,]
-ic_int_arma = intersect(as.data.frame(ic_aic_arma),
-                         as.data.frame(ic_bic_arma))
-adq_set_arma = as.matrix(arrange(as.data.frame(
-  rbind(ic_int_arma[c(1:3, 6),],
-        ic_bic_arma[2,])), p, q))
-adq_idx_arma = match(data.frame(t(adq_set_arma[, 1:2])),
-                      data.frame(t(ic_arma[, 1:2])))
-nmods = min(length(adq_idx_arma), 2)
-for (i in 1:nmods)
-{
-  checkresiduals(ARMA_est[[adq_idx_arma[i]]])
-}
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot02.png)
 
-```
+排名前二的ARMA模型和它们残差的表现
+
 
 
 ## 检查残差和残差的自相关性ACF
 
-```
-e2_arma = list()
-for (i in 1:nmods)
-{
-  e2_arma[[i]] <- resid(ARMA_est[[adq_idx_arma[i]]]) 
-  title_p_q <- paste("ARMA(",
-                     as.character(adq_set_arma[i, 1]), ", ",
-                     as.character(adq_set_arma[i, 2]), ")",
-                     sep = "")
-  plot(train_data$time[-1], e2_arma[[i]], type = "l",
-       xlab = "", ylab = "squared resid",
-       main = paste("Plot: ", title_p_q))
-  acf(e2_arma[[i]], xlab = "", ylab = "",
-      main = paste("SACF: ", title_p_q))
-}
-```
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot03.png)
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot04.png)
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot05.png)
+![plot](https://github.com/Tony980624/Time-series-forecasting/blob/main/file01/Rplot06.png)
+
 
 平方残差表现出较强的自相关性，尽管残差本身的自相关性似乎很低。我们将此解读为可能存在条件异方差的证据。
 
+## 添加GARCH部分
+
+ARMA 模型擅长处理均值的时间序列结构，但它假设残差的方差是恒定的（即同方差）。当残差的条件异方差性显著时，说明数据存在波动性聚集（volatility clustering）现象，即较大或较小的波动往往会连续出现。这种情况在金融时间序列（如股票收益率）中较为常见，此时 ARMA 模型难以准确描述数据的波动特征。GARCH 模型（广义条件异方差模型）通过引入条件方差结构来描述波动性聚集现象，可以更好地拟合和预测波动性。因此，当残差存在条件异方差时，引入 GARCH 模型可以更好地建模数据的波动特性。
 
